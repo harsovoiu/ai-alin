@@ -120,8 +120,9 @@
       <div class="chat-avatar">🔧</div>
       <div>
         <div class="chat-title">Ai Alin</div>
-        <div class="chat-status">● online — expert auto</div>
+        <div class="chat-status" id="aiStatus">● online — expert auto</div>
       </div>
+      <button class="chat-gear" onclick="openSettings()" aria-label="Setari AI">⚙</button>
       <button class="chat-close" onclick="toggleChat()" aria-label="Inchide chat">✕</button>
     </div>
     <div id="chatBody" class="chat-body"></div>
@@ -134,6 +135,30 @@
       <input id="chatInput" type="text" placeholder="Scrie simptomul sau codul de eroare..." autocomplete="off">
       <button type="submit" class="chat-send" aria-label="Trimite">➤</button>
     </form>
+  </div>
+
+  <div id="aiSettings" class="ai-modal" aria-hidden="true">
+    <div class="ai-modal-card">
+      <div class="ai-modal-head">
+        <h3>Setări AI — Ai Alin</h3>
+        <button class="ai-modal-x" onclick="closeSettings()" aria-label="Inchide">✕</button>
+      </div>
+      <p class="ai-modal-note">Configurare OpenAI-compatibilă (funcționează cu OpenAI, DeepSeek, Groq, OpenRouter, Mistral, GPU local etc.). Cheia rămâne doar în browser-ul tău (localStorage), nu e trimisă pe site.</p>
+      <label>API URL (base)
+        <input id="aiUrl" type="text" placeholder="https://api.openai.com/v1" spellcheck="false">
+      </label>
+      <label>Model
+        <input id="aiModel" type="text" placeholder="gpt-4o-mini" spellcheck="false">
+      </label>
+      <label>API Key
+        <input id="aiKey" type="password" placeholder="sk-…" spellcheck="false">
+      </label>
+      <div class="ai-modal-actions">
+        <button class="btn btn-primary" onclick="saveSettings()">Salvează</button>
+        <button class="btn btn-ghost" onclick="closeSettings()">Anulează</button>
+      </div>
+      <p class="ai-modal-hint">Exemple: OpenAI → <code>https://api.openai.com/v1</code>, model <code>gpt-4o-mini</code>; DeepSeek → <code>https://api.deepseek.com/v1</code>, model <code>deepseek-chat</code>; Groq → <code>https://api.groq.com/openai/v1</code>, model <code>llama-3.3-70b-versatile</code>.</p>
+    </div>
   </div>
 
   <script src="js/knowledge.js"></script>

@@ -1,21 +1,65 @@
 // ============================================================
-// CHAT.JS — Interfața chat "Ai Alin"
+// CHAT.JS — Interfața chat "Ai Alin" + integrare AI (OpenAI-compatibil)
+// Cheia AI rămâne în browser-ul tău (localStorage), nu se publică.
 // ============================================================
 
-const chatPanel = document.getElementById("chatPanel");
-const chatBody = document.getElementById("chatBody");
-const chatInput = document.getElementById("chatInput");
-let greeted = false;
-let history = [];
-let typing = false;
+var chatPanel = document.getElementById("chatPanel");
+var chatBody = document.getElementById("chatBody");
+var chatInput = document.getElementById("chatInput");
+var AI_STATUS = document.getElementById("aiStatus");
+var greeted = false;
+var history = [];
+var typing = false;
+
+var AI_DEFAULTS = {
+  baseUrl: "https://api.openai.com/v1",
+  model: "gpt-4o-mini",
+  key: ""
+};
+
+function loadAISettings() {
+  try {
+    var raw = localStorage.getItem("aialin_ai");
+    if (!raw) return JSON.parse(JSON.stringify(AI_DEFAULTS));
+    var s = JSON.parse(raw);
+    return {
+      baseUrl: s.baseUrl || AI_DEFAULTS.baseUrl,
+      model: s.model || AI_DEFAULTS.model,
+      key: s.key || ""
+    };
+  } catch (e) { return JSON.parse(JSON.stringify(AI_DEFAULTS)); }
+}
+
+function saveAISettings(s) {
+  localStorage.setItem("aialin_ai", JSON.stringify(s));
+}
+
+function refreshAIStatus() {
+  if (!AI_STATUS) return;
+  var s = loadAISettings();
+  if (s.key && s.baseUrl) {
+    AI_STATUS.textContent = "● AI activ — " + (s.model || "");
+    AI_STATUS.classList.add("on");
+    AI_STATUS.classList.remove("off");
+  } else {
+    AI_STATUS.textContent = "● AI dezactivat — folosesc baza locală";
+    AI_STATUS.classList.add("off");
+    AI_STATUS.classList.remove("on");
+  }
+}
 
 function toggleChat() {
-  const open = chatPanel.classList.toggle("open");
+  var open = chatPanel.classList.toggle("open");
   chatPanel.setAttribute("aria-hidden", String(!open));
   if (open) {
     if (!greeted) {
       greeted = true;
-      botSay("Salut! 👋 Eu sunt **Ai Alin** — mecanic, electrician și diagnosticar auto, specializat pe **Audi, BMW și Mercedes**.\n\nDescrie-mi ce problemă are mașina ta (simptome, coduri de eroare, zgomote) și te ajut pas cu pas. 🚗🔧");
+      var s = loadAISettings();
+      var msg = "Salut! 👋 Eu sunt **Ai Alin** — mecanic, electrician și diagnosticar auto, specializat pe **Audi, BMW și Mercedes**.\n\nDescrie-mi ce problemă are mașina ta (simptome, coduri de eroare, zgomote) și te ajut pas cu pas. 🚗🔧";
+      if (!s.key) {
+        msg += "\n\nℹ️ AI-ul **nu e activat**. Apasă ⚙ din antet ca să pui cheia API (rămâne doar pe device-ul tău), sau continuă — răspund din baza mea locală de cunoștințe.";
+      }
+      botSay(msg);
     }
     chatInput.focus();
   }
@@ -26,7 +70,7 @@ function openChat() {
 }
 
 function addMsg(text, who) {
-  const el = document.createElement("div");
+  var el = document.createElement("div");
   el.className = "msg " + who;
   el.innerHTML = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   chatBody.appendChild(el);
@@ -34,43 +78,123 @@ function addMsg(text, who) {
   return el;
 }
 
-function botSay(text) {
-  const el = addMsg(text, "bot");
-  return el;
+function botSay(text) { return addMsg(text, "bot"); }
+
+// ---------- Întrebare către AI (OpenAI-compatibil) ----------
+var SYSTEM_PROMPT = "Esti A I ALIN, un mecanic auto, electrician auto si specialist in diagnoza auto din Romania, cu peste 20 de ani de experienta, specializat pe Audi, BMW si Mercedes.\n\nReguli:\n- Raspunzi intotdeauna in limba romana, prietenos si direct, ca un mecanic de incredere.\n- Daca lipsesc detalii importante, pui intrebari de clarificare: marca, model, an, motor, simptome, coduri de eroare.\n- Pentru diagnostic: simptom -> cauze probabile ordonate -> pasi de verificare -> reparatie recomandata + cost orientativ in lei -> sfaturi de preventie.\n- Cand cineva da un cod de eroare (DTC), explici ce inseamna, cauzele posibile si pasii de verificare; nu inventa coduri.\n- Mentionezi masuri de siguranta cand e vorba de electrica, gaze, ulei, substante periculoase sau lucrari riscante.\n- Recomanzi aparatura potrivita marcii: Audi/VAG -> VCDS sau OBD11, BMW -> ISTA/INPA/Carly, Mercedes -> XENTRY/DAS.\n- Daca nu esti sigur, spui sincer si recomanzi verificare cu aparatul de diagnoza sau la service autorizat.\n- Eviti jargonul inutil; daca folosesti termeni tehnici, ii explici scurt.\n- Preturile sunt orientative, in lei, doar ca referinta generala.\n- Costurile care iti pot lipsi: nu ghicesti specificatii tehnice exacte pe care nu le stii sigur; ceri datele.\n- Esti un asistent informativ, nu oferi garantii de reparație a unui autovehicul din depărtare; recomanzi verificarea fizica a vehiculului.";
+
+function buildAiMessages() {
+  var msgs = [{ role: "system", content: SYSTEM_PROMPT }];
+  var tail = history.slice(-12);
+  for (var i = 0; i < tail.length; i++) {
+    msgs.push({
+      role: tail[i].who === "user" ? "user" : "assistant",
+      content: tail[i].text
+    });
+  }
+  return msgs;
 }
 
-function botSayTyped(text, delay) {
-  addMsg("…", "bot loading");
-  const load = chatBody.lastElementChild;
-  setTimeout(() => {
-    if (load) load.remove();
-    botSay(text);
-  }, delay || 700);
+function callAI(userText) {
+  return new Promise(function (resolve, reject) {
+    var s = loadAISettings();
+    if (!s.key || !s.baseUrl) { resolve(null); return; }
+    var base = s.baseUrl.replace(/\/+$/, "");
+    var url = base + "/chat/completions";
+    var body = {
+      model: s.model || AI_DEFAULTS.model,
+      messages: buildAiMessages(),
+      temperature: 0.4,
+      max_tokens: 900
+    };
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + s.key
+      },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { reject(new Error("HTTP " + r.status + " " + t.slice(0, 200))); });
+      return r.json();
+    }).then(function (data) {
+      var out = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (out) resolve(out);
+      else reject(new Error("Răspuns AI gol — verifică modelul setat."));
+    }).catch(function (e) { reject(e); });
+  });
 }
 
+// ---------- Trimitere mesaj ----------
 function sendMessage(e) {
   e.preventDefault();
-  const val = chatInput.value.trim();
+  var val = chatInput.value.trim();
   if (!val || typing) return;
   chatInput.value = "";
   addMsg(val, "user");
   history.push({ who: "user", text: val });
   typing = true;
-  setTimeout(() => {
-    const reply = getAnswer(val);
-    botSay(reply);
-    history.push({ who: "bot", text: reply });
-    typing = false;
-  }, 600 + Math.random() * 500);
+  addMsg("… scrie Ai Alin…", "bot loading");
+  var loadEl = chatBody.lastElementChild;
+
+  callAI(val).then(function (aiReply) {
+    setTimeout(function () {
+      if (loadEl) loadEl.remove();
+      if (aiReply) {
+        history.push({ who: "bot", text: aiReply });
+        botSay(aiReply);
+      } else {
+        var local = getAnswer(val);
+        history.push({ who: "bot", text: local });
+        botSay(local);
+      }
+      typing = false;
+    }, 300);
+  }).catch(function (err) {
+    setTimeout(function () {
+      if (loadEl) loadEl.remove();
+      var local = getAnswer(val);
+      var note = "⚠️ AI-ul a dat o eroare (**" + err.message + "**) — ți-am răspuns din baza locală:\n\n";
+      history.push({ who: "bot", text: local });
+      botSay(note + local);
+      typing = false;
+    }, 300);
+  });
 }
 
 function quickAsk(q) {
-  if (chatPanel.classList.contains("open") === false) openChat();
+  if (!chatPanel.classList.contains("open")) openChat();
   chatInput.value = q;
   sendMessage(new Event("submit"));
 }
 
+// ---------- Setări AI ----------
+function openSettings() {
+  var modal = document.getElementById("aiSettings");
+  var s = loadAISettings();
+  document.getElementById("aiUrl").value = s.baseUrl;
+  document.getElementById("aiModel").value = s.model;
+  document.getElementById("aiKey").value = s.key;
+  modal.classList.add("open");
+}
+
+function closeSettings() {
+  document.getElementById("aiSettings").classList.remove("open");
+}
+
+function saveSettings() {
+  var s = {
+    baseUrl: document.getElementById("aiUrl").value.trim() || AI_DEFAULTS.baseUrl,
+    model: document.getElementById("aiModel").value.trim() || AI_DEFAULTS.model,
+    key: document.getElementById("aiKey").value.trim()
+  };
+  saveAISettings(s);
+  refreshAIStatus();
+  closeSettings();
+  if (s.key) botSay("✅ AI activat cu **" + s.model + "**. Cheia ta e salvată doar în acest browser. Întreabă-mă orice despre mașină!");
+  else botSay("ℹ️ AI dezactivat — răspund din baza locală. Le poți adăuga oricând din ⚙.");
+}
+
 document.getElementById("year").textContent = new Date().getFullYear();
-chatInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") e.preventDefault();
-});
+refreshAIStatus();
+chatInput.addEventListener("keydown", function (e) { if (e.key === "Enter") e.preventDefault(); });
