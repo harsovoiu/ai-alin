@@ -15,6 +15,7 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.view.View;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -120,6 +121,24 @@ public class MainActivity extends Activity {
             public void onProgressChanged(WebView view, int newProgress) {
                 progressBar.setProgress(newProgress);
                 if (newProgress >= 100) progressBar.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                boolean hasMic = false;
+                String[] resources = request.getResources();
+                for (String r : resources) {
+                    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(r)) hasMic = true;
+                }
+                if (hasMic && hasMicPermission()) {
+                    request.grant(resources);
+                } else if (hasMic) {
+                    pendingMicStart = true;
+                    requestMicPermission();
+                    request.deny();
+                } else {
+                    request.deny();
+                }
             }
         });
 

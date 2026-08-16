@@ -403,3 +403,178 @@ function speak(text) {
   if (mb && !voiceSupported()) mb.style.display = "none";
   if (window.speechSynthesis) window.speechSynthesis.getVoices();
 })();
+
+// ---------- Analiza sunetului de motor (Web Audio) ----------
+var SOUND_DURATION = 6000;
+var soundActive = false;
+
+function startSoundAnalysis() {
+  if (soundActive || typing) return;
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !AC) {
+    botSay("⚠️ Analiza sunetului nu e suportată de acest browser. Dacă folosești aplicația, actualizează la v1.1.");
+    return;
+  }
+  openChat();
+  soundActive = true;
+  var loadEl = addMsg("🎙️ Ascult motorul ~6 secunde… ține telefonul aproape, departe de părți fierbinți și în mișcare", "bot loading");
+  setStatusText("🎙️ ascult motorul...");
+  var requested = { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } };
+  function start(stream) {
+    var AC2 = window.AudioContext || window.webkitAudioContext;
+    var ctx;
+    try { ctx = new AC2(); } catch (e) { ctx = new AC2(); }
+    var src = ctx.createMediaStreamSource(stream);
+    var analyser = ctx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.8;
+    src.connect(analyser);
+
+    var frames = [];
+    var rmsLog = [];
+    var freqBuf = new Uint8Array(analyser.frequencyBinCount);
+    var timeBuf = new Uint8Array(analyser.fftSize);
+
+    function rmsNow() {
+      analyser.getByteTimeDomainData(timeBuf);
+      var sum = 0;
+      for (var i = 0; i < timeBuf.length; i++) {
+        var v = (timeBuf[i] - 128) / 128;
+        sum += v * v;
+      }
+      return Math.sqrt(sum / timeBuf.length);
+    }
+
+    var t0 = Date.now();
+    var iv = setInterval(function () {
+      analyser.getByteFrequencyData(freqBuf);
+      frames.push(new Uint8Array(freqBuf));
+      rmsLog.push(rmsNow());
+      if (Date.now() - t0 >= SOUND_DURATION) {
+        clearInterval(iv);
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        try { src.disconnect(); ctx.close(); } catch (e) {}
+        soundAnalysisResult(frames, rmsLog, analyser, loadEl);
+      }
+    }, 120);
+  }
+
+  navigator.mediaDevices.getUserMedia(requested).then(start).catch(function () {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(start).catch(function (err) {
+      soundActive = false;
+      if (loadEl) loadEl.remove();
+      setStatusText("⚠️ microfon indisponibil sau acces refuzat");
+      setTimeout(refreshAIStatus, 6000);
+      botSay("⚠️ Nu am putut accesa microfonul (permisiune refuzată sau lipsă). Permite microfonul și încearcă din nou.");
+    });
+  });
+}
+
+var finishAnalysis = null;
+
+function soundAnalysisResult(frames, rmsLog, analyser, loadEl) {
+  var binCount = analyser.frequencyBinCount;
+  var sr = (analyser.context && analyser.context.sampleRate) || 44100;
+  var avg = new Float32Array(binCount);
+  for (var i = 0; i < binCount; i++) avg[i] = 0;
+  frames.forEach(function (f) {
+    for (var i = 0; i < binCount && i < f.length; i++) avg[i] += f[i];
+  });
+  for (var i = 0; i < binCount; i++) avg[i] = avg[i] / frames.length;
+
+  var total = 0, sumF = 0, maxMag = 0, domIdx = 0;
+  for (i = 1; i < binCount; i++) {
+    total += avg[i];
+    sumF += avg[i] * i;
+    if (avg[i] > maxMag) { maxMag = avg[i]; domIdx = i; }
+  }
+  var centroidHz = total > 0 ? (sumF / total) * (sr / 2) / binCount : 0;
+  var domHz = domIdx * (sr / 2) / binCount;
+
+  function bandRatio(a, b) {
+    var s = 0;
+    for (i = a; i < b && i < binCount; i++) s += avg[i];
+    return total > 0 ? s / total : 0;
+  }
+  var lowR = bandRatio(1, Math.floor(300 * binCount / (sr / 2)));
+  var midR = bandRatio(Math.floor(300 * binCount / (sr / 2)), Math.floor(1500 * binCount / (sr / 2)));
+  var highR = 1 - lowR - midR;
+
+  var rmsAvg = 0;
+  rmsLog.forEach(function (v) { rmsAvg += v; });
+  rmsAvg = rmsAvg / (rmsLog.length || 1);
+  var varSum = 0;
+  rmsLog.forEach(function (v) { varSum += (v - rmsAvg) * (v - rmsAvg); });
+  var rmsStd = Math.sqrt(varSum / (rmsLog.length || 1));
+
+  var onsets = 0;
+  for (i = 1; i < rmsLog.length; i++) {
+    if (rmsLog[i] - rmsLog[i - 1] > 0.08) onsets++;
+  }
+
+  var tags = [];
+  var chara = [];
+  if (rmsAvg < 0.08) { tags.push("silent"); chara.push("intensitate scazuta"); }
+  else if (rmsAvg < 0.2) { tags.push("moderate"); chara.push("intensitate medie"); }
+  else { tags.push("loud"); chara.push("intensitate puternica"); }
+  if (domHz < 80) { tags.push("joase"); chara.push("zgomot de frecventa foarte joasa (bord, greu)"); }
+  else if (domHz < 200) { tags.push("joase"); chara.push("frecventa dominanta joasa"); }
+  else if (domHz < 500) { tags.push("medii"); chara.push("frecventa dominanta medie-joasa"); }
+  else if (domHz < 1500) { tags.push("medii"); chara.push("frecventa dominanta medie"); }
+  else { tags.push("inalte"); chara.push("frecventa dominanta inalta (subtire)"); }
+  if (highR > 0.35) { tags.push("inalte"); chara.push("proportie mare de sunete inalte (tiuit/soierat)"); }
+  if (onsets >= 4) { tags.push("ritmic"); chara.push("ritmic/impulsiv"); }
+  else if (rmsStd < 0.03) { tags.push("constant"); chara.push("constant, fara variatii mari"); }
+  else { tags.push("variabil"); chara.push("intensitate variabila"); }
+  if (centroidHz > 2000) { tags.push("inalte"); }
+
+  var profile = "Am inregistrat sunetul motorului (~" + Math.floor(SOUND_DURATION / 1000) + " s):\n"
+    + "- Frecventa dominanta: ~" + Math.round(domHz) + " Hz\n"
+    + "- Centru spectral: ~" + Math.round(centroidHz) + " Hz\n"
+    + "- Textura: " + Math.round(lowR * 100) + "% joase, " + Math.round(midR * 100) + "% medii, " + Math.round(highR * 100) + "% inalte\n"
+    + "- " + chara.join("; ") + "\n"
+    + "- Intensitate RMS: " + rmsAvg.toFixed(3);
+
+  soundActive = false;
+  setStatusText("🔍 analizez sunetul...");
+  if (loadEl) loadEl.remove();
+
+  addMsg("🔍 Ascultă motorul. Profil sunet:\n" + profile, "user");
+  chatHistory.push({ who: "user", text: "[Analiza sunet motor] " + profile + "\n\nInterpreteaza ca un mecanic cu 20+ ani pe Audi/BMW/Mercedes: cauze probabile ordonate, cum verific, cost orientativ in lei si masuri de siguranta. Pune 1-2 intrebari scurte de clarificare (marca/model/an, cand apare zgomotul, la relanti sau turație)." });
+
+  var load2 = addMsg("📊 Interpretez sunetul...", "bot loading");
+  callAI("").then(function (aiReply) {
+    setTimeout(function () {
+      if (load2) load2.remove();
+      chatHistory.push({ who: "bot", text: aiReply });
+      botSay(aiReply);
+      speak(aiReply);
+    }, 300);
+  }).catch(function (err) {
+    setTimeout(function () {
+      if (load2) load2.remove();
+      var note = "⚠️ AI-ul n-a răspuns — ghid din baza locală:\n\n";
+      var g = getSoundGuide(tags);
+      chatHistory.push({ who: "bot", text: g });
+      botSay(note + g);
+      speak(g);
+    }, 300);
+  });
+  setTimeout(function () { if (soundActive === false) refreshAIStatus(); }, 1200);
+}
+
+function getSoundGuide(tags) {
+  var t = tags.join(",");
+  if (t.indexOf("inalte") >= 0 && t.indexOf("constant") >= 0) {
+    return "Sunet subtire/tiuit continuu — cel mai probabil: curea sau intinzator uzat, rulment de alternator/pompa de apa/compresor AC, sau admisie de aer. Bordura: verific curelele si rotitele (scoate-le si invartele manual), apoi localizeaza zgomotul cu un stetoscop mecanic. Nu deschide capota cu motorul in functiune peste elemente in miscare.";
+  }
+  if (t.indexOf("inalte") >= 0 && t.indexOf("ritmic") >= 0) {
+    return "Tictac metalic ritmic — posibil hidraulica la supape, antrenament de distributie, sau injecție. Bordura: bara un CAES/serepide motorului directorii si contextora (la rece/la cald), verifica nivelul de ulei si tachetii hidraulici; la BMW un N47 poate sugera intinzator de lant.";
+  }
+  if (t.indexOf("joase") >= 0 && t.indexOf("ritmic") >= 0) {
+    return "Bubuit/zgomot joas frecvent ritmic — sanse: paliere (brate/biela), ambreiaj amortizor volanta, distributie, sau compensatorii de pulsatie. Bordura: scade turajia la relanti si compari; daca sunetul se sincronizeaza cu turatia si creste la accelerare, e probabil la piese in rotatie. Pune o lama lunga/stetoscop pe palier si urmareste daca dingeta dispare cand e apasat ambreiajul (viteza) sau cu capcana ulei (distributie lant).";
+  }
+  return "Pentru un diagnostic corect e nevoie de context: marca si motorul (ex. Audi 2.0 TDI, BMW N47), anul, cand apare zgomotul (la rece/la cald, la relanti/acceleratie) si daca lumineza vreun martor. Pune-mi aceste detalii si iti dau cauzele probabile pas cu pas.";
+}
+
+function stopSoundStream() { /* helper - not used */ }
