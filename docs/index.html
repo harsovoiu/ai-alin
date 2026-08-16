@@ -48,6 +48,7 @@
         <li><a href="#servicii">Servicii</a></li>
         <li><a href="#despre">Despre</a></li>
         <li><a href="#marcile">Mărci</a></li>
+        <li><a href="#recenzii">Recenzii</a></li>
         <li><a href="#contact">Contact</a></li>
       </ul>
       <button class="nav-cta" onclick="openChat()">Întreabă Ai Alin</button>
@@ -141,6 +142,17 @@
     </div>
   </section>
 
+  <section class="section section-alt" id="recenzii">
+    <div class="container">
+      <h2 class="section-title">Recenzii</h2>
+      <p class="section-sub">Părerile clienților despre lucrările noastre.</p>
+      <div id="reviewsGrid" class="reviews-grid"></div>
+      <div class="reviews-cta">
+        <button class="btn btn-primary" onclick="openReviewModal()">📝 Lasă o recenzie</button>
+      </div>
+    </div>
+  </section>
+
   <footer class="footer">
     <div class="container">
       <p>© <span id="year"></span> Ai Alin — Service Auto. Toate drepturile rezervate.</p>
@@ -200,7 +212,38 @@
     </div>
   </div>
 
+  <div id="reviewModal" class="ai-modal" aria-hidden="true">
+    <div class="ai-modal-card">
+      <div class="ai-modal-head">
+        <h3>Lasă o recenzie</h3>
+        <button class="ai-modal-x" onclick="closeReviewModal()" aria-label="Inchide">✕</button>
+      </div>
+      <p class="ai-modal-note">Ne ajută pe noi și pe alți șoferi. Mulțumim!</p>
+      <label>Nume
+        <input id="revName" type="text" placeholder="Numele tău" maxlength="40" spellcheck="false">
+      </label>
+      <label>Nota
+        <div id="revStars" class="rev-stars">
+          <button type="button" class="rev-star" data-v="1" onclick="pickReviewStar(1)">★</button>
+          <button type="button" class="rev-star" data-v="2" onclick="pickReviewStar(2)">★</button>
+          <button type="button" class="rev-star" data-v="3" onclick="pickReviewStar(3)">★</button>
+          <button type="button" class="rev-star" data-v="4" onclick="pickReviewStar(4)">★</button>
+          <button type="button" class="rev-star" data-v="5" onclick="pickReviewStar(5)">★</button>
+        </div>
+      </label>
+      <label>Comentariu
+        <textarea id="revText" placeholder="Ce părere ai despre lucrare? (brand, ce ai reparat, cum a fost?…)" rows="4" maxlength="600"></textarea>
+      </label>
+      <div class="ai-modal-actions">
+        <button class="btn btn-primary" onclick="saveReview()">Publică</button>
+        <button class="btn btn-ghost" onclick="closeReviewModal()">Anulează</button>
+      </div>
+      <p class="ai-modal-hint" id="revHint" style="display:none"></p>
+    </div>
+  </div>
+
   <script src="js/knowledge.js?v=3"></script>
   <script src="js/chat.js?v=3"></script>
+  <script src="js/reviews.js?v=2"></script>
 </body>
 </html>
