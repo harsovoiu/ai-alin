@@ -1,18 +1,23 @@
 package ro.aialin.app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.net.http.SslError;
+import android.os.Build;
 import android.os.Bundle;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
 import android.view.View;
-import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.SslErrorHandler;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -20,12 +25,19 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import java.util.ArrayList;
+
 public class MainActivity extends Activity {
 
     private static final String HOME_URL = "https://harsovoiu.github.io/ai-alin/";
+    private static final int REQ_MIC = 1001;
 
     private WebView webView;
     private ProgressBar progressBar;
+
+    private SpeechRecognizer recognizer;
+    private boolean pendingMicStart = false;
+    private boolean micAsked = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -111,7 +123,146 @@ public class MainActivity extends Activity {
             }
         });
 
+        webView.addJavascriptInterface(new AndroidVoice(), "AndroidVoice");
+
         webView.loadUrl(HOME_URL);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_MIC) {
+            micAsked = true;
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (pendingMicStart) {
+                    pendingMicStart = false;
+                    startNativeListening();
+                }
+            } else {
+                js("window.onAndroidVoiceError(" + jstr("Accesul la microfon a fost refuzat. Permite microfonul aplicației din Setări > Aplicații > Ai Alin.") + ");");
+            }
+        }
+    }
+
+    private boolean hasMicPermission() {
+        return Build.VERSION.SDK_INT < 23 || checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestMicPermission() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC);
+        }
+    }
+
+    private void startNativeListening() {
+        if (!hasMicPermission()) {
+            pendingMicStart = true;
+            requestMicPermission();
+            return;
+        }
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            js("window.onAndroidVoiceError(" + jstr("Lipsă serviciu de recunoaștere vocală pe acest telefon.") + ");");
+            return;
+        }
+        try {
+            if (recognizer == null) {
+                recognizer = SpeechRecognizer.createSpeechRecognizer(this);
+                recognizer.setRecognitionListener(listener);
+            }
+            Intent ii = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            ii.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            ii.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ro-RO");
+            ii.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+            recognizer.startListening(ii);
+        } catch (Exception e) {
+            js("window.onAndroidVoiceError(" + jstr("Microfon indisponibil.") + ");");
+        }
+    }
+
+    private final RecognitionListener listener = new RecognitionListener() {
+        @Override public void onReadyForSpeech(Bundle params) {}
+        @Override public void onBeginningOfSpeech() {}
+
+        @Override
+        public void onResults(Bundle results) {
+            ArrayList<String> r = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+            String text = (r != null && !r.isEmpty()) ? r.get(0) : "";
+            js("window.onAndroidVoiceResult(" + jstr(text) + ");");
+        }
+
+        @Override
+        public void onError(int code) {
+            String msg;
+            switch (code) {
+                case SpeechRecognizer.ERROR_NO_MATCH:
+                    msg = "Nu te-am auzit — vorbește aproape de microfon și încearcă din nou.";
+                    break;
+                case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS:
+                    msg = "Permisiunea pentru microfon nu este acordată.";
+                    break;
+                case SpeechRecognizer.ERROR_AUDIO:
+                    msg = "Microfonul pare blocat sau ocupat.";
+                    break;
+                case SpeechRecognizer.ERROR_NETWORK:
+                case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                    msg = "Recunoașterea vocală are nevoie de conexiune la internet.";
+                    break;
+                case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:
+                    msg = "Serviciul vocal e ocupat — încearcă din nou.";
+                    break;
+                default:
+                    msg = "Eroare voce (cod " + code + ").";
+            }
+            js("window.onAndroidVoiceError(" + jstr(msg) + ");");
+        }
+
+        @Override public void onEndOfSpeech() {}
+        @Override public void onRmsChanged(float rmsdB) {}
+        @Override public void onBufferReceived(byte[] buffer) {}
+        @Override public void onPartialResults(Bundle partialResults) {}
+        @Override public void onEvent(int eventType, Bundle params) {}
+    };
+
+    private class AndroidVoice {
+        @JavascriptInterface
+        public void startListening() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    startNativeListening();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void cancel() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    if (recognizer != null) {
+                        try { recognizer.cancel(); } catch (Exception ignored) {}
+                    }
+                }
+            });
+        }
+    }
+
+    private void js(final String script) {
+        runOnUiThread(new Runnable() {
+            @Override public void run() {
+                webView.evaluateJavascript(script, null);
+            }
+        });
+    }
+
+    private static String jstr(String s) {
+        if (s == null) s = "";
+        StringBuilder b = new StringBuilder("\"");
+        for (char c : s.toCharArray()) {
+            if (c == '"' || c == '\\') { b.append('\\'); b.append(c); }
+            else if (c == '\n') b.append("\\n");
+            else b.append(c);
+        }
+        b.append('"');
+        return b.toString();
     }
 
     private void openExternal(Uri uri) {
@@ -133,6 +284,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        if (recognizer != null) {
+            recognizer.destroy();
+            recognizer = null;
+        }
         if (webView != null) {
             webView.destroy();
         }

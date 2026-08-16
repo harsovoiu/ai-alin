@@ -257,13 +257,48 @@ function setStatusText(t) {
 }
 
 function voiceSupported() {
-  return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  return hasAndroidVoice || !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 }
+
+var hasAndroidVoice = typeof window.AndroidVoice !== "undefined";
 
 var voiceRecog = null;
 
 function toggleVoiceInput() {
   var btn = document.getElementById("voiceBtn");
+  if (hasAndroidVoice) {
+    if (voiceRecog) {
+      try { AndroidVoice.cancel(); } catch (e) {}
+      voiceRecog = null;
+      if (btn) btn.classList.remove("listening");
+      refreshAIStatus();
+      return;
+    }
+    window.onAndroidVoiceResult = function (t) {
+      voiceRecog = null;
+      if (btn) btn.classList.remove("listening");
+      var val = (t || "").trim();
+      chatInput.value = val;
+      if (val) sendMessage(new Event("submit"));
+      refreshAIStatus();
+    };
+    window.onAndroidVoiceError = function (e) {
+      voiceRecog = null;
+      if (btn) btn.classList.remove("listening");
+      setStatusText("⚠️ " + e);
+      setTimeout(refreshAIStatus, 8000);
+    };
+    voiceRecog = { listening: true };
+    if (btn) btn.classList.add("listening");
+    setStatusText("🎤 ascult... vorbește în română");
+    try { AndroidVoice.startListening(); } catch (e2) {
+      voiceRecog = null;
+      if (btn) btn.classList.remove("listening");
+      setStatusText("⚠️ microfon indisponibil");
+      setTimeout(refreshAIStatus, 4000);
+    }
+    return;
+  }
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
     setStatusText("✖ dictarea vocală nu e suportată de acest browser");
