@@ -1,6 +1,8 @@
 // ============================================================
-// CHAT.JS — Interfața chat "Ai Alin" + integrare AI (OpenAI-compatibil)
-// Cheia AI rămâne în browser-ul tău (localStorage), nu se publică.
+// CHAT.JS — Interfața chat "Ai Alin" + integrare AI
+// - implicit: AI cloud prin Cloudflare Worker (fără cheie pentru vizitatori)
+// - opțional: cheie personală în browser (localStorage, doar pe device)
+// - fallback: baza de cunoștințe locală
 // ============================================================
 
 var chatPanel = document.getElementById("chatPanel");
@@ -10,6 +12,9 @@ var AI_STATUS = document.getElementById("aiStatus");
 var greeted = false;
 var history = [];
 var typing = false;
+
+var CLOUD_URL = "https://ai-alin.aialin.workers.dev";
+var CLOUD_TOKEN = "b03c4da3747e9a44965f9e92c1c4854d3f2ff074ca7b3760";
 
 var AI_DEFAULTS = {
   baseUrl: "https://api.openai.com/v1",
@@ -38,13 +43,13 @@ function refreshAIStatus() {
   if (!AI_STATUS) return;
   var s = loadAISettings();
   if (s.key && s.baseUrl) {
-    AI_STATUS.textContent = "● AI activ — " + (s.model || "");
+    AI_STATUS.textContent = "● AI personal — " + (s.model || "");
     AI_STATUS.classList.add("on");
     AI_STATUS.classList.remove("off");
   } else {
-    AI_STATUS.textContent = "● AI dezactivat — folosesc baza locală";
-    AI_STATUS.classList.add("off");
-    AI_STATUS.classList.remove("on");
+    AI_STATUS.textContent = "● AI cloud activ — expert auto";
+    AI_STATUS.classList.add("on");
+    AI_STATUS.classList.remove("off");
   }
 }
 
@@ -54,12 +59,7 @@ function toggleChat() {
   if (open) {
     if (!greeted) {
       greeted = true;
-      var s = loadAISettings();
-      var msg = "Salut! 👋 Eu sunt **Ai Alin** — mecanic, electrician și diagnosticar auto, specializat pe **Audi, BMW și Mercedes**.\n\nDescrie-mi ce problemă are mașina ta (simptome, coduri de eroare, zgomote) și te ajut pas cu pas. 🚗🔧";
-      if (!s.key) {
-        msg += "\n\nℹ️ AI-ul **nu e activat**. Apasă ⚙ din antet ca să pui cheia API (rămâne doar pe device-ul tău), sau continuă — răspund din baza mea locală de cunoștințe.";
-      }
-      botSay(msg);
+      botSay("Salut! 👋 Eu sunt **Ai Alin** — mecanic, electrician și diagnosticar auto, specializat pe **Audi, BMW și Mercedes**.\n\nDescrie-mi ce problemă are mașina ta (simptome, coduri de eroare, zgomote) și te ajut pas cu pas. 🚗🔧\n\nℹ️ Răspund cu **AI** (expert auto) pentru toți vizitatorii. Dacă vrei să folosești propria cheie, apasă ⚙ — altfel nu trebuie să faci nimic.");
     }
     chatInput.focus();
   }
@@ -98,21 +98,28 @@ function buildAiMessages() {
 function callAI(userText) {
   return new Promise(function (resolve, reject) {
     var s = loadAISettings();
-    if (!s.key || !s.baseUrl) { resolve(null); return; }
+    if (s.key && s.baseUrl) {
+      // 1. Cheie personală (browser) — direct la furnizor
+      callDirectAI(s).then(resolve).catch(reject);
+    } else {
+      // 2. AI cloud prin Worker — pentru toți vizitatorii
+      callCloudAI().then(resolve).catch(reject);
+    }
+  });
+}
+
+function callDirectAI(s) {
+  return new Promise(function (resolve, reject) {
     var base = s.baseUrl.replace(/\/+$/, "");
-    var url = base + "/chat/completions";
     var body = {
       model: s.model || AI_DEFAULTS.model,
       messages: buildAiMessages(),
       temperature: 0.4,
       max_tokens: 900
     };
-    fetch(url, {
+    fetch(base + "/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + s.key
-      },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + s.key },
       body: JSON.stringify(body)
     }).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { reject(new Error("HTTP " + r.status + " " + t.slice(0, 200))); });
@@ -121,6 +128,33 @@ function callAI(userText) {
       var out = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
       if (out) resolve(out);
       else reject(new Error("Răspuns AI gol — verifică modelul setat."));
+    }).catch(function (e) { reject(e); });
+  });
+}
+
+function callCloudAI() {
+  return new Promise(function (resolve, reject) {
+    var body = {
+      messages: buildAiMessages(),
+      temperature: 0.4,
+      max_tokens: 900
+    };
+    fetch(CLOUD_URL + "/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Ai-Alin-Token": CLOUD_TOKEN },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      if (!r.ok) return r.text().then(function (t) { reject(new Error("HTTP " + r.status + " " + t.slice(0, 200))); });
+      return r.json();
+    }).then(function (data) {
+      if (data && data.content) {
+        var parsed = JSON.parse(data.content);
+        var out = parsed && parsed.choices && parsed.choices[0] && parsed.choices[0].message && parsed.choices[0].message.content;
+        if (out) resolve(out);
+        else reject(new Error("Răspuns AI goal."));
+      } else {
+        reject(new Error(data && data.error ? data.error : "Răspuns neașteptat."));
+      }
     }).catch(function (e) { reject(e); });
   });
 }

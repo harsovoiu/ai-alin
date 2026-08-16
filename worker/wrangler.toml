@@ -1,0 +1,8 @@
+name = "ai-alin"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+PROVIDER_BASE_URL = "https://api.groq.com/openai/v1"
+PROVIDER_MODEL = "llama-3.3-70b-versatile"
+SHARED_TOKEN = "b03c4da3747e9a44965f9e92c1c4854d3f2ff074ca7b3760"
