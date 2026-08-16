@@ -10,3 +10,6 @@ Thumbs.db
 .DS_Store
 # APK local (publicat in docs/apk)
 AiAlin.apk
+
+# AAB local (generat din android/)
+AiAlin.aab

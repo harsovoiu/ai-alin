@@ -2,6 +2,12 @@ plugins {
     id 'com.android.application'
 }
 
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
 android {
     namespace 'ro.aialin.app'
     compileSdk 35
@@ -16,10 +22,12 @@ android {
 
     signingConfigs {
         release {
-            storeFile file('../ai-alin.keystore')
-            storePassword 'aialin2026'
-            keyAlias 'aialin'
-            keyPassword 'aialin2026'
+            if (keystoreProps.containsKey('storeFile')) {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
         }
     }
 

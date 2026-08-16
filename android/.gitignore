@@ -9,6 +9,7 @@ local.properties
 # Keystore — SECRET de semnare, nu se publică niciodată
 *.keystore
 *.jks
+keystore.properties
 
 # IDE
 .idea/
