@@ -290,11 +290,18 @@ function toggleVoiceInput() {
       sendMessage(new Event("submit"));
     }
   };
-  rec.onerror = function () {
+  rec.onerror = function (ev) {
     done = true;
     if (btn) btn.classList.remove("listening");
-    setStatusText("⚠️ nu te-am înțeles — încearcă din nou");
-    setTimeout(refreshAIStatus, 4000);
+    var code = (ev && ev.error) || "necunoscut";
+    var msg;
+    if (code === "not-allowed" || code === "service-not-allowed") msg = "⚠️ accesul la microfon a fost refuzat — apasă pe iconița de microfon din adresa browserului și permite accesul";
+    else if (code === "no-speech") msg = "🎤 nu te-am auzit — vorbește aproape de microfon";
+    else if (code === "audio-capture") msg = "⚠️ nu am găsit un microfon conectat";
+    else if (code === "network") msg = "⚠️ recunoașterea vocală are nevoie de conexiune la internet";
+    else msg = "⚠️ eroare voce: " + code;
+    setStatusText(msg);
+    setTimeout(refreshAIStatus, 7000);
   };
   rec.onend = function () {
     voiceRecog = null;
