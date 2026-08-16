@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ai Alin — Service Auto & Diagnoza | Audi, BMW, Mercedes</title>
+  <meta name="description" content="Ai Alin — expert in mecanica auto, electrician auto si diagnoza auto pentru Audi, BMW si Mercedes. Service complet si consultanta online.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="header">
+    <nav class="nav container">
+      <a href="#" class="brand">Ai <span>Alin</span></a>
+      <ul class="nav-links">
+        <li><a href="#servicii">Servicii</a></li>
+        <li><a href="#despre">Despre</a></li>
+        <li><a href="#marcile">Mărci</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <button class="nav-cta" onclick="openChat()">Întreabă Ai Alin</button>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="container hero-inner">
+      <h1>Expert în mecanica, electrica și diagnoza<br>auto <span class="accent">Audi • BMW • Mercedes</span></h1>
+      <p>20+ ani de experiență. Diagnostic corect, reparație sigură și răspunsuri imediate pentru mașina ta.</p>
+      <div class="hero-actions">
+        <button class="btn btn-primary" onclick="openChat()">💬 Întreabă Ai Alin acum</button>
+        <a class="btn btn-ghost" href="#servicii">Vezi serviciile</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="servicii">
+    <div class="container">
+      <h2 class="section-title">Servicii</h2>
+      <p class="section-sub">Tot ce are nevoie mașina ta, sub un singur acoperiș.</p>
+      <div class="cards">
+        <article class="card">
+          <div class="card-icon">🔧</div>
+          <h3>Mecanică auto</h3>
+          <p>Distribuție, frâne, suspensie, transmisie, sistem de răcire, uleiuri și filtre. Revizii complete și reparații la standarde.</p>
+        </article>
+        <article class="card">
+          <div class="card-icon">⚡</div>
+          <h3>Electrician auto</h3>
+          <p>Instalații electrice, mers la greu, alternator, demaror, baterie, senzori, CAN-bus. Depistare și remediere sigură.</p>
+        </article>
+        <article class="card">
+          <div class="card-icon">🖥️</div>
+          <h3>Diagnoză auto</h3>
+          <p>Citire și interpretare coduri de eroare cu aparatură dedicată (VCDS, ISTA, XENTRY) și recomandări clare de reparație.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="marcile">
+    <div class="container">
+      <h2 class="section-title">Specializați pe</h2>
+      <p class="section-sub">Cunoștințe aprofundate și aparatură dedicată pentru fiecare marcă.</p>
+      <div class="brands">
+        <div class="brand-chip">Audi<span class="brand-note">VCDS / OBD11</span></div>
+        <div class="brand-chip">BMW<span class="brand-note">ISTA / INPA</span></div>
+        <div class="brand-chip">Mercedes-Benz<span class="brand-note">XENTRY / DAS</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="despre">
+    <div class="container about">
+      <div class="about-text">
+        <h2 class="section-title">Despre Ai Alin</h2>
+        <p>Peste 20 de ani de experiență în ateliere auto, de la reparații de rutină la diagnostice complicate pe motoare TFSI/TDI, N/B-BMW și OM/M-Mercedes.</p>
+        <p>Cred în <strong>transparență</strong>: îți spun exact ce problemă are mașina, ce înseamnă fiecare cod de eroare și cât te va costa — fără mofturi și fără costuri ascunse.</p>
+        <p>Ai Alin este și un <strong>asistent inteligent</strong> online: îl poți întreba oricând despre simptome, coduri de eroare sau lucrări de făcut, direct din chat.</p>
+      </div>
+      <div class="about-badge">
+        <div class="badge-num">20+</div>
+        <div class="badge-label">ani de experiență</div>
+        <div class="badge-num">1000+</div>
+        <div class="badge-label">mașini reparate</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="contact">
+    <div class="container contact-grid">
+      <div>
+        <h2 class="section-title">Contact</h2>
+        <p>Vino cu mașina la un diagnostic, sau întreabă-ne online.</p>
+        <ul class="contact-list">
+          <li>📍 Strada Atelierului nr. 12, București</li>
+          <li>📞 07xx xxx xxx</li>
+          <li>✉️ contact@aialin.ro</li>
+          <li>🕘 Luni – Vineri: 08:00 – 18:00</li>
+        </ul>
+      </div>
+      <button class="btn btn-primary btn-big" onclick="openChat()">
+        💬 Discută cu Ai Alin
+      </button>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p>© <span id="year"></span> Ai Alin — Service Auto. Toate drepturile rezervate.</p>
+    </div>
+  </footer>
+
+  <button id="chatToggle" class="chat-toggle" onclick="toggleChat()" aria-label="Deschide chat">
+    💬
+  </button>
+
+  <div id="chatPanel" class="chat-panel" aria-hidden="true">
+    <div class="chat-header">
+      <div class="chat-avatar">🔧</div>
+      <div>
+        <div class="chat-title">Ai Alin</div>
+        <div class="chat-status">● online — expert auto</div>
+      </div>
+      <button class="chat-close" onclick="toggleChat()" aria-label="Inchide chat">✕</button>
+    </div>
+    <div id="chatBody" class="chat-body"></div>
+    <div class="chat-quick">
+      <button class="quick-btn" onclick="quickAsk('Nu pornește, demarorul nu întoarce. Ce poate fi?')">Nu pornește</button>
+      <button class="quick-btn" onclick="quickAsk('Martorul de ulei se aprinde intermitent. Ce fac?')">Martor ulei</button>
+      <button class="quick-btn" onclick="quickAsk('Se aprinde martorul motor (check engine). Ce poate fi?')">Martor motor</button>
+    </div>
+    <form class="chat-input-row" onsubmit="sendMessage(event)">
+      <input id="chatInput" type="text" placeholder="Scrie simptomul sau codul de eroare..." autocomplete="off">
+      <button type="submit" class="chat-send" aria-label="Trimite">➤</button>
+    </form>
+  </div>
+
+  <script src="js/knowledge.js"></script>
+  <script src="js/chat.js"></script>
+</body>
+</html>
