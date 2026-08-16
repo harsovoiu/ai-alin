@@ -261,6 +261,7 @@ function voiceSupported() {
 }
 
 var hasAndroidVoice = typeof window.AndroidVoice !== "undefined";
+var hasAndroidTTS = typeof window.AndroidTTS !== "undefined";
 
 var voiceRecog = null;
 
@@ -364,6 +365,7 @@ function toggleVoiceOutput() {
     else { b.textContent = "🔇"; b.classList.remove("on"); }
   }
   if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (hasAndroidTTS) { try { AndroidTTS.stop(); } catch (e2) {} }
   setStatusText(voiceOutput ? "🔊 voi citi răspunsurile cu voce" : "🔇 citire cu voce oprită");
   setTimeout(refreshAIStatus, 3000);
   if (voiceOutput) speak("Salut! Sunt Ai Alin, expert auto. Îți voi răspunde și cu vocea. Întreabă-mă despre mașina ta.");
@@ -379,9 +381,14 @@ function pickRoVoice() {
 }
 
 function speak(text) {
-  if (!voiceOutput || !window.speechSynthesis) return;
+  if (!voiceOutput) return;
   var clean = String(text || "").replace(/\*\*(.+?)\*\*/g, "$1").replace(/[_*`#>]/g, "").trim();
   if (!clean) return;
+  if (hasAndroidTTS) {
+    try { AndroidTTS.speak(clean); } catch (e) {}
+    return;
+  }
+  if (!window.speechSynthesis) return;
   try {
     var u = new SpeechSynthesisUtterance(clean);
     u.lang = "ro-RO";
@@ -397,7 +404,7 @@ function speak(text) {
   if (b) {
     if (voiceOutput) { b.textContent = "🔊"; b.classList.add("on"); }
     else b.textContent = "🔇";
-    if (!window.speechSynthesis) b.style.display = "none";
+    if (!window.speechSynthesis && !hasAndroidTTS) b.style.display = "none";
   }
   var mb = document.getElementById("voiceBtn");
   if (mb && !voiceSupported()) mb.style.display = "none";

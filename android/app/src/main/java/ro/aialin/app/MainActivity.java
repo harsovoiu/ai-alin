@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -27,6 +28,7 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class MainActivity extends Activity {
 
@@ -39,6 +41,9 @@ public class MainActivity extends Activity {
     private SpeechRecognizer recognizer;
     private boolean pendingMicStart = false;
     private boolean micAsked = false;
+
+    private TextToSpeech tts;
+    private boolean ttsReady = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -143,6 +148,20 @@ public class MainActivity extends Activity {
         });
 
         webView.addJavascriptInterface(new AndroidVoice(), "AndroidVoice");
+        webView.addJavascriptInterface(new AndroidTTS(), "AndroidTTS");
+
+        tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    int r = tts.setLanguage(Locale.forLanguageTag("ro-RO"));
+                    if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        tts.setLanguage(Locale.getDefault());
+                    }
+                    ttsReady = true;
+                }
+            }
+        });
 
         webView.loadUrl(HOME_URL);
     }
@@ -242,6 +261,33 @@ public class MainActivity extends Activity {
         @Override public void onEvent(int eventType, Bundle params) {}
     };
 
+    private class AndroidTTS {
+        @JavascriptInterface
+        public void speak(final String text) {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    if (tts != null && ttsReady && text != null && !text.trim().isEmpty()) {
+                        try { tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "aialin"); } catch (Exception ignored) {}
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void stop() {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    if (tts != null) { try { tts.stop(); } catch (Exception ignored) {} }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public boolean available() {
+            return ttsReady;
+        }
+    }
+
     private class AndroidVoice {
         @JavascriptInterface
         public void startListening() {
@@ -306,6 +352,11 @@ public class MainActivity extends Activity {
         if (recognizer != null) {
             recognizer.destroy();
             recognizer = null;
+        }
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+            tts = null;
         }
         if (webView != null) {
             webView.destroy();
