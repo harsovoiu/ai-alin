@@ -1,0 +1,8 @@
+ro.aialin.app-pngs-0 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\build\generated\res\pngs\release
+ro.aialin.app-resValues-1 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\build\generated\res\resValues\release
+ro.aialin.app-updated_navigation_xml-2 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\build\generated\updated_navigation_xml\release
+ro.aialin.app-packageReleaseResources-3 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\build\intermediates\incremental\release\packageReleaseResources\merged.dir
+ro.aialin.app-packageReleaseResources-4 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\build\intermediates\incremental\release\packageReleaseResources\stripped.dir
+ro.aialin.app-release-5 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\build\intermediates\merged_res\release\mergeReleaseResources
+ro.aialin.app-main-6 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\src\main\res
+ro.aialin.app-release-7 C:\Users\Xentry\Desktop\taxi\Ai Alin\android\app\src\release\res

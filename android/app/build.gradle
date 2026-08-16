@@ -1,0 +1,39 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'ro.aialin.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "ro.aialin.app"
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('../ai-alin.keystore')
+            storePassword 'aialin2026'
+            keyAlias 'aialin'
+            keyPassword 'aialin2026'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt')
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+}
+
+dependencies {
+}

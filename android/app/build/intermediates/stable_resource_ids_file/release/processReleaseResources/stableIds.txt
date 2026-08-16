@@ -1,0 +1,3 @@
+ro.aialin.app:style/AppTheme = 0x7f030000
+ro.aialin.app:string/app_name = 0x7f020000
+ro.aialin.app:drawable/ic_launcher = 0x7f010000
