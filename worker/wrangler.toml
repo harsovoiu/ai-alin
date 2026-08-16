@@ -2,6 +2,10 @@ name = "ai-alin"
 main = "src/worker.js"
 compatibility_date = "2025-01-01"
 
+[[kv_namespaces]]
+binding = "AIALIN_KV"
+id = "23d04b2607f64050a81ab3a2cc599e52"
+
 [vars]
 PROVIDER_BASE_URL = "https://api.groq.com/openai/v1"
 PROVIDER_MODEL = "llama-3.3-70b-versatile"

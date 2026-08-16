@@ -21,6 +21,18 @@ function loadReviews() {
   reviews = REVIEW_DEFAULTS.slice();
 }
 
+function loadCloudReviews(cb) {
+  try {
+    if (typeof CLOUD_URL === "undefined" || typeof CLOUD_TOKEN === "undefined") { cb(null); return; }
+    fetch(CLOUD_URL + "/reviews").then(function (r) {
+      return r.json();
+    }).then(function (d) {
+      if (d && Array.isArray(d.reviews)) cb(d.reviews);
+      else cb(null);
+    }).catch(function () { cb(null); });
+  } catch (e) { cb(null); }
+}
+
 function escHtml(s) {
   return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -131,3 +143,9 @@ if (document.readyState === "loading") {
 } else {
   renderReviews();
 }
+loadCloudReviews(function (cloud) {
+  if (cloud && cloud.length) {
+    reviews = cloud;
+    renderReviews();
+  }
+});
