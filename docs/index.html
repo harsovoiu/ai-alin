@@ -158,6 +158,7 @@
         <div class="chat-title">Ai Alin</div>
         <div class="chat-status" id="aiStatus">● online — expert auto</div>
       </div>
+      <button id="voiceSpkBtn" class="chat-gear" onclick="toggleVoiceOutput()" aria-label="Citire cu voce">🔇</button>
       <button class="chat-gear" onclick="openSettings()" aria-label="Setari AI">⚙</button>
       <button class="chat-close" onclick="toggleChat()" aria-label="Inchide chat">✕</button>
     </div>
@@ -169,6 +170,7 @@
     </div>
     <form class="chat-input-row" onsubmit="sendMessage(event)">
       <input id="chatInput" type="text" placeholder="Scrie simptomul sau codul de eroare..." autocomplete="off">
+      <button type="button" id="voiceBtn" class="chat-mic" onclick="toggleVoiceInput()" aria-label="Dictare vocala">🎤</button>
       <button type="submit" class="chat-send" aria-label="Trimite">➤</button>
     </form>
   </div>
