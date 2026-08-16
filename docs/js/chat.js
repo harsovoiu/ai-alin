@@ -240,3 +240,7 @@ function saveSettings() {
 document.getElementById("year").textContent = new Date().getFullYear();
 refreshAIStatus();
 chatInput.addEventListener("keydown", function (e) { if (e.key === "Enter") e.preventDefault(); });
+
+if (/(^|[?&])chat=1(&|$)/.test(location.search)) {
+  setTimeout(function () { openChat(); }, 350);
+}
