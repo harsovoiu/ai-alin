@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Ai Alin — Service Auto</string>
-    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:statusBarColor">#0F2027</item>
-        <item name="android:windowBackground">@android:color/white</item>
-    </style>
-</resources>

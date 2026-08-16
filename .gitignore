@@ -8,3 +8,5 @@ node_modules/
 # OS
 Thumbs.db
 .DS_Store
+# APK local (publicat in docs/apk)
+AiAlin.apk

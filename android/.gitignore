@@ -1,0 +1,15 @@
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local config (conține calea SDK autohtonă)
+local.properties
+
+# Keystore — SECRET de semnare, nu se publică niciodată
+*.keystore
+*.jks
+
+# IDE
+.idea/
+*.iml
