@@ -55,11 +55,13 @@ Specializări: Audi / VW (VCDS, OBD11) | BMW (ISTA, INPA) | Mercedes (XENTRY, DA
 Diagnoza oferită este orientativă și nu înlocuiește verificarea fizică cu aparatul de diagnoză.
 ```
 
-**Grafice obligatorii:**
-- Pictogramă: 512×512 PNG — poți folosi `android/app/src/main/res/drawable/ic_launcher.png` (generez gratis o versiune mai mare la cerere).
-- Pictogramă funcțională 512×512 (icon de magazin).
-- Capturi de ecran telefon: minimum 2 (mă pot ajuta să le fac).
-- Imagine de prezentare (feature): 1024×500.
+**Grafice obligatorii (folderul `Magazin/`):**
+- Pictogramă 512×512 → `Magazin/icon_512.png`
+- Pictogramă funcțională 512×512 → tot `Magazin/icon_512.png`
+- Capturi de ecran telefon (2 buc, 1080×1920) → `Magazin/screenshot_telefon_home.png` și `Magazin/screenshot_telefon_chat.png`
+- Imagine de prezentare (feature) 1024×500 → `Magazin/feature_graphic.png`
+
+Dacă vrei să refaci capturile de ecran: site-ul se deschide direct pe chat cu linkul `https://harsovoiu.github.io/ai-alin/?chat=1`.
 
 ## Importanță
 - **Nu** poți încărca un `.apk` direct pe Google Play — aici se pune mereu `.aab` (pe acela l-ai generat).
