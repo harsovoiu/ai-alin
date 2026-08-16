@@ -117,11 +117,11 @@ function callDirectAI(s) {
       temperature: 0.4,
       max_tokens: 900
     };
-    fetch(base + "/chat/completions", {
+    fetchWithTimeout(base + "/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": "Bearer " + s.key },
       body: JSON.stringify(body)
-    }).then(function (r) {
+    }, 45000).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { reject(new Error("HTTP " + r.status + " " + t.slice(0, 200))); });
       return r.json();
     }).then(function (data) {
@@ -132,6 +132,14 @@ function callDirectAI(s) {
   });
 }
 
+function fetchWithTimeout(url, opts, ms) {
+  if (typeof AbortController === "undefined") return fetch(url, opts);
+  var ctrl = new AbortController();
+  var timer = setTimeout(function () { ctrl.abort(); }, ms || 45000);
+  opts = Object.assign({}, opts, { signal: ctrl.signal });
+  return fetch(url, opts).then(function (r) { clearTimeout(timer); return r; }, function (e) { clearTimeout(timer); throw e; });
+}
+
 function callCloudAI() {
   return new Promise(function (resolve, reject) {
     var body = {
@@ -139,11 +147,11 @@ function callCloudAI() {
       temperature: 0.4,
       max_tokens: 900
     };
-    fetch(CLOUD_URL + "/chat", {
+    fetchWithTimeout(CLOUD_URL + "/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Ai-Alin-Token": CLOUD_TOKEN },
       body: JSON.stringify(body)
-    }).then(function (r) {
+    }, 45000).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { reject(new Error("HTTP " + r.status + " " + t.slice(0, 200))); });
       return r.json();
     }).then(function (data) {
