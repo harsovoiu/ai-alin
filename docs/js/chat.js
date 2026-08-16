@@ -10,7 +10,7 @@ var chatBody = document.getElementById("chatBody");
 var chatInput = document.getElementById("chatInput");
 var AI_STATUS = document.getElementById("aiStatus");
 var greeted = false;
-var history = [];
+var chatHistory = [];
 var typing = false;
 
 var CLOUD_URL = "https://ai-alin.aialin.workers.dev";
@@ -85,7 +85,7 @@ var SYSTEM_PROMPT = "Esti A I ALIN, un mecanic auto, electrician auto si special
 
 function buildAiMessages() {
   var msgs = [{ role: "system", content: SYSTEM_PROMPT }];
-  var tail = history.slice(-12);
+  var tail = chatHistory.slice(-12);
   for (var i = 0; i < tail.length; i++) {
     msgs.push({
       role: tail[i].who === "user" ? "user" : "assistant",
@@ -174,7 +174,7 @@ function sendMessage(e) {
   if (!val || typing) return;
   chatInput.value = "";
   addMsg(val, "user");
-  history.push({ who: "user", text: val });
+  chatHistory.push({ who: "user", text: val });
   typing = true;
   addMsg("… scrie Ai Alin…", "bot loading");
   var loadEl = chatBody.lastElementChild;
@@ -183,12 +183,12 @@ function sendMessage(e) {
     setTimeout(function () {
       if (loadEl) loadEl.remove();
       if (aiReply) {
-        history.push({ who: "bot", text: aiReply });
+        chatHistory.push({ who: "bot", text: aiReply });
         botSay(aiReply);
       } else {
-        var local = getAnswer(val);
-        history.push({ who: "bot", text: local });
-        botSay(local);
+var local = getAnswer(val);
+      chatHistory.push({ who: "bot", text: local });
+      botSay(local);
       }
       typing = false;
     }, 300);
@@ -197,7 +197,7 @@ function sendMessage(e) {
       if (loadEl) loadEl.remove();
       var local = getAnswer(val);
       var note = "⚠️ AI-ul a dat o eroare (**" + err.message + "**) — ți-am răspuns din baza locală:\n\n";
-      history.push({ who: "bot", text: local });
+      chatHistory.push({ who: "bot", text: local });
       botSay(note + local);
       typing = false;
     }, 300);
