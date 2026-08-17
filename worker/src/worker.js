@@ -152,33 +152,53 @@ async function chat(request, env) {
   const messages = Array.isArray(payload.messages) ? payload.messages : null;
   if (!messages) return json({ error: "Mesaje lipsă." }, 400, CORS);
 
-  let up;
-  try {
-    up = await fetch(baseUrl + "/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + env.PROVIDER_KEY
-      },
-      body: JSON.stringify({
-        model: model,
-        messages: messages,
-        temperature: payload.temperature !== undefined ? payload.temperature : 0.4,
-        max_tokens: payload.max_tokens !== undefined ? payload.max_tokens : 900
-      })
-    });
-  } catch (e) {
-    return json({ error: "Furnizor indisponibil: " + e.message }, 502, CORS);
+  const candidates = [model];
+  if (env.PROVIDER_FALLBACK_MODEL && env.PROVIDER_FALLBACK_MODEL !== model) {
+    candidates.push(env.PROVIDER_FALLBACK_MODEL);
   }
 
-  const respBody = await up.text();
-  if (!up.ok) {
-    return json({ error: "Eroare AI (" + up.status + "): " + respBody.slice(0, 300) }, 502, CORS);
+  let lastErr = "";
+  for (const m of candidates) {
+    let up;
+    try {
+      up = await fetch(baseUrl + "/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + env.PROVIDER_KEY
+        },
+        body: JSON.stringify({
+          model: m,
+          messages: messages,
+          temperature: payload.temperature !== undefined ? payload.temperature : 0.4,
+          max_tokens: payload.max_tokens !== undefined ? payload.max_tokens : 900
+        })
+      });
+    } catch (e) {
+      lastErr = e.message;
+      continue;
+    }
+
+    const respBody = await up.text();
+    if (up.ok) {
+      return json({ content: respBody }, 200, CORS, {
+        "Cache-Control": "no-store"
+      });
+    }
+
+    lastErr = respBody.slice(0, 300);
+    const low = respBody.toLowerCase();
+    const isModelError =
+      up.status === 404 ||
+      up.status === 400 && low.indexOf("model_") !== -1 ||
+      low.indexOf("does not exist") !== -1 ||
+      low.indexOf("decommissioned") !== -1 ||
+      low.indexOf("model not") !== -1;
+    if (isModelError) continue;
+    return json({ error: "Eroare AI (" + up.status + "): " + lastErr }, 502, CORS);
   }
 
-  return json({ content: respBody }, 200, CORS, {
-    "Cache-Control": "no-store"
-  });
+  return json({ error: "Eroare AI: " + lastErr }, 502, CORS);
 }
 
 function json(data, status, cors, extra) {
